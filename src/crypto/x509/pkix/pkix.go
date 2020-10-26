@@ -55,17 +55,22 @@ type Name struct {
 	StreetAddress, PostalCode                 []string
 	SerialNumber, CommonName                  string
 
-	Names      []AttributeTypeAndValue
-	ExtraNames []AttributeTypeAndValue
+	Names       []AttributeTypeAndValue
+	ExtraNames  []AttributeTypeAndValue
+	rDNSequence RDNSequence
 }
 
 func (n *Name) FillFromRDNSequence(rdns *RDNSequence) {
+	newRdns := make(RDNSequence, 0, len(*rdns))
+	newRdnsLen := 0
 	for _, rdn := range *rdns {
 		if len(rdn) == 0 {
 			continue
 		}
 
+		newRdn := make(RelativeDistinguishedNameSET, 0, len(rdn))
 		for _, atv := range rdn {
+			newRdn = append(newRdn, atv)
 			n.Names = append(n.Names, atv)
 			value, ok := atv.Value.(string)
 			if !ok {
@@ -96,7 +101,10 @@ func (n *Name) FillFromRDNSequence(rdns *RDNSequence) {
 				}
 			}
 		}
+		newRdns = append(newRdns, newRdn)
+		newRdnsLen++
 	}
+	n.rDNSequence = newRdns[:newRdnsLen]
 }
 
 var (
@@ -130,6 +138,9 @@ func (n Name) appendRDNs(in RDNSequence, values []string, oid asn1.ObjectIdentif
 }
 
 func (n Name) ToRDNSequence() (ret RDNSequence) {
+	if len(n.rDNSequence) > 0 {
+		return n.rDNSequence
+	}
 	ret = n.appendRDNs(ret, n.Country, oidCountry)
 	ret = n.appendRDNs(ret, n.Province, oidProvince)
 	ret = n.appendRDNs(ret, n.Locality, oidLocality)
